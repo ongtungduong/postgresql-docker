@@ -1,0 +1,52 @@
+services:
+  postgresql:
+    image: postgres:18.1
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    shm_size: 1gb
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-securepassword}
+      PROJECT_USER: ${PROJECT_USER:-app}
+      PROJECT_PASSWORD: ${PROJECT_PASSWORD:-securepassword}
+      EXPORTER_PASSWORD: ${EXPORTER_PASSWORD:-securepassword}
+      PGDATA: /var/lib/postgresql/data/
+    volumes:
+      - ./data:/var/lib/postgresql/data
+      - ./initdb.d:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  postgres-exporter:
+    depends_on:
+      - postgresql
+    image: prometheuscommunity/postgres-exporter:v0.19.0
+    ports:
+      - "${EXPORTER_PORT:-9187}:9187"
+    command:
+      - --collector.stat_statements
+    environment:
+      DATA_SOURCE_URI: postgresql:5432/postgres?sslmode=disable
+      DATA_SOURCE_USER: postgres_exporter
+      DATA_SOURCE_PASS: ${EXPORTER_PASSWORD:-securepassword}
+      PG_EXPORTER_AUTO_DISCOVER_DATABASES: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9187/metrics | grep pg_up | grep 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
