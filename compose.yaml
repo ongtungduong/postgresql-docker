@@ -3,7 +3,12 @@ services:
     image: postgres:${POSTGRES_VERSION:-18.1}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
-    shm_size: 1gb
+    shm_size: ${POSTGRES_SHM_SIZE:-1gb}
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+      nproc: 65535
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-securepassword}
       PROJECT_USER: ${PROJECT_USER:-app}
